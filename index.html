@@ -3,13 +3,14 @@
 <body>
 
 <p id="demo">Click the button to get your position:</p>
-
+<p id="data"/>
 <button onclick="getLocation()">Try It</button>
 
 <div id="mapholder"></div>
 
 <script>
 var x = document.getElementById("demo");
+var data = document.getElementById("data");
 
 function getLocation() {
     if (navigator.geolocation) {
@@ -22,7 +23,7 @@ function getLocation() {
 
 function showPosition(position) {
     var latlon = position.coords.latitude+","+position.coords.longitude;
-
+    document.gelElementById("data").innerHTML = position.coords.speed;
     var img_url = "http://maps.googleapis.com/maps/api/staticmap?center="
     +latlon+"&zoom=14&size=400x300&sensor=false";
     document.getElementById("mapholder").innerHTML = "<img src='"+img_url+"'>";
