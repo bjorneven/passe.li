@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/folkemengde/folkemengde.iml" filepath="$PROJECT_DIR$/folkemengde/folkemengde.iml" />
       <module fileurl="file://$PROJECT_DIR$/passe.li.iml" filepath="$PROJECT_DIR$/passe.li.iml" />
     </modules>
   </component>
