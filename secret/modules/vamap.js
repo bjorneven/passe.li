@@ -1,5 +1,6 @@
 import {Graph} from './shortestpath.js';
 
+
 var self = this;
 
  var mymap;
@@ -34,14 +35,35 @@ function initRoutes(r) {
     
     
 }
+function toUpper(v) {
+    if (v != null && (typeof(v) === 'string' || v instanceof String)) {
+        return v.trim().toUpperCase();
+    } 
+    return null;
+}
+
 function initGraph() {
     adjacentEdges.forEach((value,key, map) => {
         graph.addVertex(key, value);
     });
 }
 
+function getVAFlight(from, to, fn) {
+    $.ajax({
+        beforeSend: function(request) {
+            request.setRequestHeader("X-API-Key", '/**/');
+        },
+        dataType: "json",
+        url: 'https://va.skymatix.online/api/flights/search?dep_icao='+toUpper(from)+'&arr_icao='+toUpper(to),
+        success: function(data) {
+            let vaData = JSON.parse(data);
+            fn(data);
+        }
+    });    
+}
+
 function getShortestRoute(from, to) {
- return graph.shortestPath(from, to).concat([from]).reverse();
+ return graph.shortestPath(toUpper(from), toUpper(to)).concat([toUpper(from)]).reverse();
 }
 
 
@@ -73,6 +95,13 @@ function highlightRoutes(routeNamesArray) {
         'Route info' + JSON.stringify(routeNamesArray) + '</br>'
     );
     
+   /* for (let i = 0;i < routeNamesArray.length - 1;i++) {
+        console.log("Fetching flight " + routeNamesArray[i] +"=>" + routeNamesArray[i+1]);
+        getVAFlight(routeNamesArray[i], routeNamesArray[i+1], (vadata) => {
+            console.log(vadata.data[0].id);
+        })
+    }*/
+    
 }
 
 
@@ -88,9 +117,9 @@ function addFilter(dep, arr) {
         filterRoute = allRoutes;
     } else {
         filterRoute = allRoutes.filter( el => {
-            return el.DptAirport.trim().toUpperCase() == dep.trim().toUpperCase() || dep.trim() === "";
+            return toUpper(el.DptAirport) === toUpper(dep) || dep.trim() === "";
         }).filter( el => {
-            return el.ArrAirport.trim().toUpperCase() == arr.trim().toUpperCase() || arr.trim() === "";
+            return toUpper(el.ArrAirport) === toUpper(arr) || arr.trim() === "";
         });
     }
     allRoutesGeodesics = [];    
