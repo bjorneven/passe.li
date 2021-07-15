@@ -1,13 +1,17 @@
+import {Graph} from './shortestpath.js';
 
- var self = this;
+var self = this;
 
  var mymap;
  var featureRouteGroup;
  var featureAirportGroup;
+var featureHighlightGroup;
 
  var allRoutes = [];
  var airportMap = new Map();
 var allRoutesGeodesics = [];
+
+const graph = new Graph();
 
 var circlePropZoomSmall = {
     color: 'orange',
@@ -26,8 +30,52 @@ function initRoutes(r) {
          
     allRoutes.forEach(forEveryRoute)
     allRoutesGeodesics.forEach(drawRoutes);
-
+    initGraph();
+    
+    
 }
+function initGraph() {
+    adjacentEdges.forEach((value,key, map) => {
+        graph.addVertex(key, value);
+    });
+}
+
+function getShortestRoute(from, to) {
+ return graph.shortestPath(from, to).concat([from]).reverse();
+}
+
+
+function hideHighlight() {
+    featureHighlightGroup.clearLayers();
+}
+
+function highlightRoutes(routeNamesArray) {
+    featureHighlightGroup.clearLayers();
+
+    let places = [];
+    console.log("Highlighting " + JSON.stringify(routeNamesArray));
+
+    routeNamesArray.forEach((value,key,array) => {
+        let airport = airportMap.get(value);        
+        places.push(airport.getLatLng());
+    });
+    const lineOptions = {
+        weight: 6,
+        opacity: 1,
+        stroke: true,
+        color: 'black',
+        wrap: false
+    };
+    
+    const geodesicLine = new L.Geodesic(places, lineOptions);
+    geodesicLine.addTo(featureHighlightGroup);
+    $('#infomap').html(
+        'Route info' + JSON.stringify(routeNamesArray) + '</br>'
+    );
+    
+}
+
+
 function clearFilter() {
     filterRoute = allRoutes;
 
@@ -59,6 +107,9 @@ function drawRoutes(routeGeodesic, index, array) {
         routeGeodesic.addTo(featureRouteGroup);
 
     }
+
+    
+
   //  if ()
 
 }
@@ -77,6 +128,8 @@ function showAirports() {
 function randColor() {
     return Math.floor(Math.random()*16777215).toString(16);
 }
+var adjacentEdges = new Map();
+
 function forEveryRoute(value, index, array) {
                
 
@@ -88,7 +141,11 @@ function forEveryRoute(value, index, array) {
 
    let last = value.Fixes[value.Fixes.length - 1];
 
+   
+
     if (!airportMap.has(value.DptAirport)) {
+
+        
 
         let airportFrom = L.circleMarker([first.Lat, first.Lon], circlePropZoomSmall);
         airportFrom.setRadius(3);
@@ -114,7 +171,8 @@ function forEveryRoute(value, index, array) {
 
 
     if (!airportMap.has(value.ArrAirport, value)) {
-            
+
+
         let airportTo = L.circleMarker([last.Lat, last.Lon], circlePropZoomSmall);
         airportTo.getProps().route = value;
         airportTo.getProps().color = randColor();
@@ -144,6 +202,7 @@ function forEveryRoute(value, index, array) {
 
     let from = new L.LatLng(first.Lat, first.Lon); 
     let to = new L.LatLng(last.Lat, last.Lon); 
+
     let i;
     const places = []
     for (i = 0; i < value.Fixes.length; i++) {
@@ -162,6 +221,16 @@ function forEveryRoute(value, index, array) {
     };
     
     const geodesicLine = new L.Geodesic(places, lineOptions);
+
+    //graph.addEdge(value.DptAirport, value.ArrAirport, geodesicLine.statistics.totalDistance);
+
+    if (!adjacentEdges.has(value.DptAirport)) {
+        adjacentEdges.set(value.DptAirport, {});
+    }
+           
+    adjacentEdges.get(value.DptAirport)[value.ArrAirport] = geodesicLine.statistics.totalDistance;
+    
+   
 
     geodesicLine.getProps().route = {'DptAirport': value.DptAirport, 'ArrAirport': value.ArrAirport };
   
@@ -252,8 +321,13 @@ function calcCircleRadius() {
        featureRouteGroup.addTo(mymap);
        featureAirportGroup = L.featureGroup();
        featureAirportGroup.addTo(mymap);
+
+       featureHighlightGroup = L.featureGroup();
+       featureHighlightGroup.addTo(mymap);
+
         featureRouteGroup.setZIndex(0);
-       featureAirportGroup.setZIndex(1000);
+       featureAirportGroup.setZIndex(-1);
+       featureHighlightGroup.setZIndex(-1);
 }
 
-export {mapInit, showRoutes, hideRoutes, addFilter, clearFilter, initRoutes};
+export {mapInit, showRoutes, hideRoutes, addFilter, clearFilter, initRoutes, highlightRoutes, hideHighlight, getShortestRoute};
