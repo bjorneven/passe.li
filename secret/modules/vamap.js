@@ -144,10 +144,7 @@ function addFilter(dep, arr) {
             return toUpper(el.ArrAirport) === toUpper(arr) || arr.trim() === "";
         });
     }
-    allRoutesGeodesics = [];    
     featureRouteGroup.clearLayers();
-    filterRoute.forEach(forEveryRoute); 
-    allRoutesGeodesics.forEach(drawRoutes);
     filterRoute.forEach(drawRoutes);
 }
 
