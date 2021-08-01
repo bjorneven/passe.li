@@ -24,7 +24,7 @@ var circlePropZoomBig = {
     fillColor: '#f03',
     fillOpacity: 0.5
 };
- var filterRoutes = [];
+ var filterRoute = [];
 
 function initRoutes(r) {
     allRoutes = r;
@@ -110,11 +110,33 @@ function clearFilter() {
 
  }
 
+function addAirportFilterWithinFeature(feature) {
+    let geometry =  feature.geometry;
+    featureRouteGroup.clearLayers();
+   
+    filterRoute = allRoutesGeodesics.filter((el) => {
+        let dptlatLng = airportMap.get(el.getProps().route.DptAirport).getLatLng();
+        let depPoint = [dptlatLng.lng, dptlatLng.lat];
+        let arrlatLng = airportMap.get(el.getProps().route.ArrAirport).getLatLng();
+        let arrPoint = [arrlatLng.lng, arrlatLng.lat];
+
+        return gju.pointInPolygon({
+            type: 'Point',
+            coordinates: depPoint
+        }, geometry) || 
+        gju.pointInPolygon({
+            type: 'Point',
+            coordinates: arrPoint
+        }, geometry);
+        }); 
+    filterRoute.forEach(drawRoutes)
+}
+
 function addFilter(dep, arr) {
-    let filterRoute = [];
+    filterRoute = [];
 
     if (dep.trim() === "" && arr.trim() === "") {
-        filterRoute = allRoutes;
+        filterRoute = allRoutesGeodesics;
     } else {
         filterRoute = allRoutes.filter( el => {
             return toUpper(el.DptAirport) === toUpper(dep) || dep.trim() === "";
@@ -126,12 +148,13 @@ function addFilter(dep, arr) {
     featureRouteGroup.clearLayers();
     filterRoute.forEach(forEveryRoute); 
     allRoutesGeodesics.forEach(drawRoutes);
+    filterRoute.forEach(drawRoutes);
 }
 
 /* expects geodesic value */
 function drawRoutes(routeGeodesic, index, array) {
-    let dptAirport = routeGeodesic.getProps().route.DptAirport
-    let arrAirport = routeGeodesic.getProps().route.ArrAirport
+    let dptAirport = routeGeodesic.getProps().route.DptAirport;
+    let arrAirport = routeGeodesic.getProps().route.ArrAirport;
     if (mymap.getBounds().contains(airportMap.get(dptAirport).getLatLng()) || mymap.getBounds().contains(airportMap.get(arrAirport).getLatLng())) {
         routeGeodesic.addTo(featureRouteGroup);
 
@@ -169,64 +192,38 @@ function forEveryRoute(value, index, array) {
    let first = value.Fixes[0]
 
    let last = value.Fixes[value.Fixes.length - 1];
+   let hasDeparture = airportMap.has(value.DptAirport);
+   let hasArrival = airportMap.has(value.ArrAirport);
 
-   
+   while (!hasArrival || !hasDeparture) {
 
-    if (!airportMap.has(value.DptAirport)) {
+    let airportData = !hasDeparture ? first : last;
+    let airportName = !hasDeparture ? value.DptAirport : value.ArrAirport;
+    let airportMarker = L.circleMarker([airportData.Lat, airportData.Lon], circlePropZoomSmall);
 
-        
+    airportMarker.setRadius(3);
+    airportMarker.getProps().name = airportName;
+    airportMarker.getProps().color = randColor();
+    airportMarker.addTo(featureAirportGroup);
 
-        let airportFrom = L.circleMarker([first.Lat, first.Lon], circlePropZoomSmall);
-        airportFrom.setRadius(3);
-        airportFrom.getProps().route = value;
-        airportFrom.getProps().color = randColor();
-        airportFrom.addTo(featureAirportGroup);
+    airportMap.set(airportName, airportMarker);
 
-        airportMap.set(value.DptAirport, airportFrom);
+    hasDeparture = airportMap.has(value.DptAirport);
+    hasArrival = airportMap.has(value.ArrAirport);
 
-        airportFrom.on('mouseover',(e) => {
-            var source = e.sourceTarget;
-            var ri = source.getProps().route;
-            $('#inputDepartureFilter').val(ri.DptAirport);
-            airportMap.get(ri.DptAirport).setRadius(calcCircleRadius() * 2);
-        });
+    airportMarker.on('mouseover',(e) => {
+        let source = e.sourceTarget;
+        let name = source.getProps().name;
+        $('#inputDepartureFilter').val(name);
+        airportMap.get(name).setRadius(calcCircleRadius() * 2);
+    });
 
-        airportFrom.on('mouseout',(e) => {
-            var source = e.sourceTarget;
-            var ri = source.getProps().route;
-            airportMap.get(ri.DptAirport).setRadius(calcCircleRadius());
-        });
-    }
-
-
-    if (!airportMap.has(value.ArrAirport, value)) {
-
-
-        let airportTo = L.circleMarker([last.Lat, last.Lon], circlePropZoomSmall);
-        airportTo.getProps().route = value;
-        airportTo.getProps().color = randColor();
-
-        airportTo.setRadius(calcCircleRadius())
-        airportTo.addTo(featureAirportGroup);
-
-        airportMap.set(value.ArrAirport, airportTo);
-        airportTo.on('mouseover',(e) => {
-            var source = e.sourceTarget;
-            var ri = source.getProps().route;
-            $('#inputDepartureFilter').val(ri.ArrAirport);
-            airportMap.get(ri.ArrAirport).setRadius(calcCircleRadius() * 2);
-
-        });
-        airportTo.on('mouseout',(e) => {
-            var source = e.sourceTarget;
-            var ri = source.getProps().route;
-
-            airportMap.get(ri.ArrAirport).setRadius(calcCircleRadius());
-        });
-    }
-
-
-
+    airportMarker.on('mouseout',(e) => {
+        let source = e.sourceTarget;
+        let name = source.getProps().name;
+        airportMap.get(name).setRadius(calcCircleRadius());
+    });
+   }
     
 
     let from = new L.LatLng(first.Lat, first.Lon); 
@@ -262,17 +259,21 @@ function forEveryRoute(value, index, array) {
    
 
     geodesicLine.getProps().route = {'DptAirport': value.DptAirport, 'ArrAirport': value.ArrAirport };
+    geodesicLine.getProps().origColor = airportMap.get(value.DptAirport).getProps().color;
   
 //    geodesicLine.addTo(featureRouteGroup);
     allRoutesGeodesics.push(geodesicLine);
+    filterRoute = allRoutesGeodesics;
     geodesicLine.on('mouseout',(e) => {
+        var source =   e.sourceTarget;
+        source.setStyle({color : '#'+source.getProps().origColor, weight: 4});
         $('#infomap').html('Hover over a route to see info');
     });
     
     geodesicLine.on('mouseover',(e) => {
         var source =   e.sourceTarget;
         var ri = source.getProps().route;
-
+        source.setStyle({color :'black', weight: 7}); 
         $('#infomap').html(
         'Departure:' + ri.DptAirport + '<br/>' + 
         'Arrival:' + ri.ArrAirport + '<br/>') 
@@ -306,7 +307,7 @@ function calcCircleRadius() {
         });
         featureRouteGroup.clearLayers();
 
-        allRoutesGeodesics.forEach(drawRoutes);
+        filterRoute.forEach(drawRoutes);
     });
 
     mymap.on("moveend", function () {
@@ -325,7 +326,7 @@ function calcCircleRadius() {
         featureRouteGroup.clearLayers();
 
         
-        allRoutesGeodesics.forEach(drawRoutes);
+        filterRoute.forEach(drawRoutes);
      });
 
     L.tileLayer('https://api.mapbox.com/styles/v1/{id}/tiles/{z}/{x}/{y}?access_token={accessToken}', {
@@ -359,4 +360,23 @@ function calcCircleRadius() {
        featureHighlightGroup.setZIndex(-1);
 }
 
-export {mapInit, showRoutes, hideRoutes, addFilter, clearFilter, initRoutes, highlightRoutes, hideHighlight, getShortestRoute};
+function initCountries(value) {
+    let myLayer = L.geoJSON(value, {
+        onEachFeature: function(feature, layer) {
+            if (feature.properties && feature.properties.name) {
+                feature.properties.bounds_calculated = layer.getBounds();
+               // console.log("Feature boubds " + layer.getBounds());
+                layer.bindPopup(feature.properties.name, {closeButton: false, offset: L.point(0, -20)});
+              //  layer.on('mouseover', function() { layer.openPopup(); });
+               // layer.on('mouseout', function() { layer.closePopup(); });
+                layer.on('click', function() { console.log("Click"); addAirportFilterWithinFeature(feature); });
+            }
+        },
+        pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng);
+        }
+    });
+    mymap.addLayer(myLayer);
+}
+
+export {mapInit, showRoutes, hideRoutes, addFilter, clearFilter, initRoutes, highlightRoutes, hideHighlight, getShortestRoute,initCountries};

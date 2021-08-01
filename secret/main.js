@@ -1,5 +1,5 @@
 
-import {mapInit, initRoutes, addFilter, highlightRoutes, hideHighlight, getShortestRoute} from './modules/vamap.js';
+import {mapInit, initRoutes, addFilter, highlightRoutes, hideHighlight, initCountries, getShortestRoute} from './modules/vamap.js';
 
 
 mapInit('mapid');
@@ -10,6 +10,13 @@ $.getJSON('./route.json', function(r) {
 
 $("#filterButton").click(function(e) {
     e.preventDefault();
+});
+
+$.getJSON('./countries.geojson', function (r) {
+    initCountries(r);
+});
+
+$("#icaoFilterForm").submit(function() {
     const depFilt = $("#inputDepartureFilter").val();
     const arrFilt = $("#inputArrivalFilter").val();
 
